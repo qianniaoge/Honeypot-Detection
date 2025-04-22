@@ -29,10 +29,13 @@ python detector.py -i urls.txt -t 20 -r 5
 参数	必需	默认值	说明
 -i/--input
 	✅	无	输入文件路径（UTF-8编码）
+ 
 -t/--threads
 	❌	10	并发线程数（建议≤50）
+ 
 -r/--rate
 	❌	无	请求速率限制（请求数/秒）
+ 
 📂 输出文件
 文件名	内容格式
 honeypot.txt
