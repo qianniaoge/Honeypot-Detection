@@ -82,13 +82,6 @@ https://example.com/honeypot
     if response.elapsed.total_seconds() > 2:  
         bucket.rate *= 0.8  
 
-    企业级部署方案
-        搭配Prometheus监控指标：
-
-        # prometheus.yml 配置片段  
-        - job_name: 'honeypot_detector'  
-          static_configs:  
-            - targets: ['detector-host:9090']  
 
 📜 开源协议
 
