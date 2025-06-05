@@ -1,16 +1,17 @@
 """
-蜜罐批量检测脚本 v2025.04.22
-功能：
-1. 输入URL列表自动去重
-2. 并发线程数可调（默认10线程）
-3. 请求速率可控（每秒请求数）
-4. 结果自动分类保存并去重
+蜜罐批量检测脚本 v2025.06.05
+更新说明：
+1. 结果文件自动保存至report目录
+2. 正常结果文件追加当天日期
+3. 新增错误日志记录功能
 """
 
 import re
+import os
 import time
 import argparse
 import threading
+import datetime
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib3.exceptions import InsecureRequestWarning
@@ -31,7 +32,7 @@ class TokenBucket:
             now = time.time()
             elapsed = now - self._last_time
             self._tokens += elapsed * self._rate
-            self._tokens = min(self._tokens, self._rate)  # 限制最大令牌数
+            self._tokens = min(self._tokens, self._rate)
 
             if self._tokens < 1.0:
                 sleep_time = (1.0 - self._tokens) / self._rate
@@ -93,6 +94,7 @@ def detect_honeypot(url, bucket=None):
 
 def save_results(results, filename):
     """去重保存结果"""
+    os.makedirs(os.path.dirname(filename), exist_ok=True)  # 自动创建目录
     seen = set()
     with open(filename, 'w') as f:
         for item in results:
@@ -105,8 +107,10 @@ def save_results(results, filename):
 def main():
     parser = argparse.ArgumentParser(description='蜜罐批量检测工具')
     parser.add_argument('-i', '--input', required=True, help='URL列表文件路径')
-    parser.add_argument('-t', '--threads', type=int, default=10, help='并发线程数 (默认: 10)')
-    parser.add_argument('-r', '--rate', type=float, help='请求速率限制 (请求数/秒)')
+    parser.add_argument('-t', '--threads', type=int, default=10, 
+                       help='并发线程数 (默认: 10)')
+    parser.add_argument('-r', '--rate', type=float, 
+                       help='请求速率限制 (请求数/秒)')
     args = parser.parse_args()
 
     # 初始化令牌桶
@@ -137,14 +141,19 @@ def main():
             except Exception as e:
                 errors.append({'url': futures[future], 'reason': str(e)})
 
+    # 生成日期标识
+    current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+
     # 保存结果
-    save_results(honeypots, 'honeypot.txt')
-    save_results(normals, 'normal.txt')
+    save_results(honeypots, os.path.join('report', 'honeypot.txt'))
+    save_results(normals, os.path.join('report', f'normal-{current_date}.txt'))
+    save_results(errors, os.path.join('report', 'errors.txt'))
 
     print("\n\n[检测报告]")
-    print(f"疑似蜜罐: {len(honeypots)} 个 (保存至 honeypot.txt)")
-    print(f"正常URL : {len(normals)} 个 (保存至 normal.txt)")
-    print(f"错误记录: {len(errors)} 个")
+    print(f"检测日期: {current_date}")
+    print(f"疑似蜜罐: {len(honeypots)} 个 (路径: report/honeypot-{current_date}.txt)")
+    print(f"正常URL : {len(normals)} 个 (路径: report/normal-{current_date}.txt)")
+    print(f"错误记录: {len(errors)} 个 (路径: report/errors-{current_date}.txt)")
 
 if __name__ == "__main__":
     main()
